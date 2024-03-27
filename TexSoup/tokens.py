@@ -10,6 +10,7 @@ from TexSoup.category import categorize  # used for tests
 from TexSoup.utils import IntEnum, TC
 import itertools
 import string
+from TexSoup.math_config import MathModeTracker
 
 # Custom higher-level combinations of primitives
 SKIP_ENV_NAMES = ('lstlisting', 'verbatim', 'verbatimtab', 'Verbatim', 'listing')
@@ -24,9 +25,17 @@ BRACKETS_DELIMITERS = {
     r'\urcorner', r'\lbrack', r'\rbrack'
 }
 # TODO: looks like left-right do have to match
-SIZE_PREFIX = ('left', 'right', 'big', 'Big', 'bigg', 'Bigg')
-PUNCTUATION_COMMANDS = {command + bracket
+SIZE_PREFIX = (
+    'left', 'right', 
+    'big', 'Big', 
+    'bigg', 'Bigg', 
+    'bigl', 'bigr',
+    'biggl', 'biggr',
+    'Bigl', 'Bigr'
+    )
+PUNCTUATION_COMMANDS = {command + opt_space + bracket
                         for command in SIZE_PREFIX
+                        for opt_space in {'', ' '}
                         for bracket in BRACKETS_DELIMITERS.union({'|', '.'})}
 
 __all__ = ['tokenize']
@@ -172,13 +181,63 @@ def tokenize_math_sym_switch(text, prev=None):
     >>> tokenize_math_sym_switch(categorize(r'$$\min_x$$ \command'))
     '$$'
     """
+    # if text.peek().category == CC.MathSwitch:
+    #     if not MathModeTracker.in_math_mode: # if not in math mode
+    #         if text.peek(1) and text.peek(1).category == CC.MathSwitch:
+    #             result = Token(text.forward(2), text.position)
+    #             result.category = TC.DisplayMathSwitch
+    #             MathModeTracker.math_mode_type = "Display"
+    #         else:
+    #             result = Token(text.forward(1), text.position)
+    #             result.category = TC.MathSwitch
+    #             MathModeTracker.math_mode_type = "Inline"
+    #         MathModeTracker.in_math_mode = True
+    #         return result
+    #     else:
+    #         if MathModeTracker.math_mode_type == "Inline": # if in math inline mode
+    #             # Close math inline mode
+    #             MathModeTracker.in_math_mode = False
+    #             MathModeTracker.math_mode_type = None
+    #             result = Token(text.forward(1), text.position)
+    #             result.category = TC.MathSwitch
+    #             return result
+    #         if MathModeTracker.math_mode_type == "Display": # if in math display mode
+    #             # Close math display mode
+    #             MathModeTracker.in_math_mode = False
+    #             MathModeTracker.math_mode_type = None
+    #             result = Token(text.forward(2), text.position)
+    #             result.category = TC.DisplayMathSwitch
+    #             return result
+
     if text.peek().category == CC.MathSwitch:
-        if text.peek(1) and text.peek(1).category == CC.MathSwitch:
-            result = Token(text.forward(2), text.position)
-            result.category = TC.DisplayMathSwitch
+        math_switch_next_char = text.peek(1) and text.peek(1).category == CC.MathSwitch
+        if not MathModeTracker.in_math_mode: # if not in math mode
+            if math_switch_next_char:
+                MathModeTracker.enter("Display")
+                forward = 2
+            else:
+                MathModeTracker.enter("Inline")
+                forward = 1
         else:
+            cur_mode = MathModeTracker.math_mode_type
+            if cur_mode == "Display" and math_switch_next_char:
+                MathModeTracker.exit()
+            # if cur_mode == "Inline" and not math_switch_next_char:
+            elif cur_mode == "Inline":
+                MathModeTracker.exit()
+            else:
+                cur_mode = "Display" if math_switch_next_char else "Inline"
+                MathModeTracker.enter(cur_mode)
+            forward = 1 if cur_mode == "Inline" else 2
+
+        MathModeTracker.math_mode_track()
+        if forward == 1:
             result = Token(text.forward(1), text.position)
             result.category = TC.MathSwitch
+        else:
+            result = Token(text.forward(2), text.position)
+            result.category = TC.DisplayMathSwitch
+        # print(MathModeTracker.math_mode_type)
         return result
 
 
