@@ -524,17 +524,21 @@ def read_args(src, n_required=-1, n_optional=-1, args=None, tolerance=0,
         return args
     
     ## rewrote this part to accept {}[][]{}
-    attempts_max = n_required + n_optional
-    attempts = 0
-    while attempts < attempts_max and n_required > 0:
+    #attempts_max = max(1, n_required + n_optional)
+    #attempts = 0
+    #old_arg_count = n_required + n_optional
+    while n_required != 0:
+        old_arg_count = n_required + n_optional
         if src.hasNext() and src.peek().category == TC.BracketBegin:
             n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
         elif src.hasNext() and src.peek().category == TC.GroupBegin:
-            n_required -= read_arg_required(src, args, 1, tolerance, mode)
+            n_required = read_arg_required(src, args, n_required, tolerance, mode)
         else:
             n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
-            n_required -= read_arg_required(src, args, 1, tolerance, mode)
-        attempts += 1
+            n_required = read_arg_required(src, args, n_required, tolerance, mode)
+        #attempts += 1
+        if (n_required + n_optional) == old_arg_count:
+            break
     return args
 
 
