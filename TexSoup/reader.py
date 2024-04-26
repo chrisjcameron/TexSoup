@@ -273,7 +273,10 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
         expr = MATH_TOKEN_TO_ENV[c.category]([], position=c.position)
         return read_math_env(src, expr, tolerance=tolerance)
     elif c.category == TC.Escape:
-        name, args = read_command(src, tolerance=tolerance, mode=mode)
+        if is_arg:
+            name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
+        else:
+            name, args = read_command(src, tolerance=tolerance, mode=mode)
         if name == 'item':
             assert mode != MODE_MATH, r'Command \item invalid in math mode.'
             contents = read_item(src)
@@ -519,13 +522,16 @@ def read_args(src, n_required=-1, n_optional=-1, args=None, tolerance=0,
     args = args or TexArgs()
     if n_required == 0 and n_optional == 0:
         return args
-    n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
-    n_required = read_arg_required(src, args, n_required, tolerance, mode)
-
-    if src.hasNext() and src.peek().category == TC.BracketBegin:
-        n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
-    if src.hasNext() and src.peek().category == TC.GroupBegin:
-        n_required = read_arg_required(src, args, n_required, tolerance, mode)
+    
+    ## rewrite this part to accept {}[][]{}
+    while n_required > 0:
+        if src.hasNext() and src.peek().category == TC.BracketBegin:
+            n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
+        elif src.hasNext() and src.peek().category == TC.GroupBegin:
+            n_required -= read_arg_required(src, args, 1, tolerance, mode)
+        else:
+            n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
+            n_required -= read_arg_required(src, args, 1, tolerance, mode)
     return args
 
 
