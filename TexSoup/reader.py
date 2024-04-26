@@ -26,6 +26,11 @@ MATH_SIMPLE_ENVS = (
 MATH_TOKEN_TO_ENV = {env.token_begin: env for env in MATH_SIMPLE_ENVS}
 ARG_BEGIN_TO_ENV = {arg.token_begin: arg for arg in arg_type}
 
+DEF_MACROS = set([
+    'renewcommand',
+    'newcommand',
+])
+
 NO_ARG_MATH_CMD = """
 alpha approx ast beta bigcup blacksquare Box boxtimes cap cdot cdots chi 
 colon complement cong cup Delta delta div downarrow emptyset epsilon 
@@ -273,7 +278,7 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
         expr = MATH_TOKEN_TO_ENV[c.category]([], position=c.position)
         return read_math_env(src, expr, tolerance=tolerance)
     elif c.category == TC.Escape:
-        if is_arg:
+        if "parent_name" in DEF_MACROS:
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
@@ -750,6 +755,8 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
     token = Token('', buf.position)
     if n_required_args < 0 and n_optional_args < 0:
         n_required_args, n_optional_args = SIGNATURES.get(name, (-1, -1))
-    args = read_args(buf, n_required_args, n_optional_args,
+    
+    else:
+        args = read_args(buf, n_required_args, n_optional_args,
                      tolerance=tolerance, mode=mode)
     return name, args
