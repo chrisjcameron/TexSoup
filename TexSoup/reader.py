@@ -523,8 +523,10 @@ def read_args(src, n_required=-1, n_optional=-1, args=None, tolerance=0,
     if n_required == 0 and n_optional == 0:
         return args
     
-    ## rewrite this part to accept {}[][]{}
-    while n_required > 0:
+    ## rewrote this part to accept {}[][]{}
+    attempts_max = n_required + n_optional
+    attempts = 0
+    while attempts < attempts_max and n_required > 0:
         if src.hasNext() and src.peek().category == TC.BracketBegin:
             n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
         elif src.hasNext() and src.peek().category == TC.GroupBegin:
