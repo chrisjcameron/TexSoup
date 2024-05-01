@@ -26,10 +26,10 @@ MATH_SIMPLE_ENVS = (
 MATH_TOKEN_TO_ENV = {env.token_begin: env for env in MATH_SIMPLE_ENVS}
 ARG_BEGIN_TO_ENV = {arg.token_begin: arg for arg in arg_type}
 
-DEF_MACROS = set([
-    'renewcommand',
-    'newcommand',
-])
+DEF_MACROS = {
+    'renewcommand': (0),
+    'newcommand': (0, 3),
+}
 
 NO_ARG_MATH_CMD = """
 alpha approx ast beta bigcup blacksquare Box boxtimes cap cdot cdots chi 
@@ -278,7 +278,9 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
         expr = MATH_TOKEN_TO_ENV[c.category]([], position=c.position)
         return read_math_env(src, expr, tolerance=tolerance)
     elif c.category == TC.Escape:
-        if "parent_name" in DEF_MACROS:
+        # parent_name, arg_found = ParentTracker[1] #second to top stack item
+
+        if parent_name in DEF_MACROS and arg_found in DEF_MACROS[parent_name]: 
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
@@ -742,6 +744,12 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
     ('item', [])
     >>> buf.peek()
     ' aaa '
+    # \renewcommand{\subsection}[1]{{\textit{#1.~}}}
+    # push [renewcommand, 0]  #number args read so far
+    # push [subsection, 0]
+    # pop [subsection, 0] --> increment parent args detected
+    #    ++ -> [renewcommnand,  1]
+    # push [textit, 0]
 
     # >>> buf = Buffer(tokenize(categorize('\\sect abcd')))
     # >>> _ = next(buf)
@@ -752,6 +760,7 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
         next(buf)
 
     name = next(buf)
+    #push name to ParentTracker stack
     token = Token('', buf.position)
     if n_required_args < 0 and n_optional_args < 0:
         n_required_args, n_optional_args = SIGNATURES.get(name, (-1, -1))
@@ -759,4 +768,6 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
     else:
         args = read_args(buf, n_required_args, n_optional_args,
                      tolerance=tolerance, mode=mode)
+    #pop ParentTracker
+    #increment args_found for (now) top item 
     return name, args
