@@ -10,6 +10,7 @@ from TexSoup.tokens import (
     SKIP_ENV_NAMES,
     MATH_ENV_NAMES,
 )
+from TexSoup.parent_tracker import ParentTracker
 import functools
 import string
 import sys
@@ -278,7 +279,8 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
         expr = MATH_TOKEN_TO_ENV[c.category]([], position=c.position)
         return read_math_env(src, expr, tolerance=tolerance)
     elif c.category == TC.Escape:
-        # parent_name, arg_found = ParentTracker[1] #second to top stack item
+
+        parent_name, arg_found = ParentTracker[1] #second to top stack item
 
         if parent_name in DEF_MACROS and arg_found in DEF_MACROS[parent_name]: 
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
@@ -761,6 +763,8 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
 
     name = next(buf)
     #push name to ParentTracker stack
+    ParentTracker.push((name, ))
+
     token = Token('', buf.position)
     if n_required_args < 0 and n_optional_args < 0:
         n_required_args, n_optional_args = SIGNATURES.get(name, (-1, -1))
@@ -769,5 +773,7 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
         args = read_args(buf, n_required_args, n_optional_args,
                      tolerance=tolerance, mode=mode)
     #pop ParentTracker
+    parent_name, args_found = ParentTracker.pop()
     #increment args_found for (now) top item 
+    
     return name, args
