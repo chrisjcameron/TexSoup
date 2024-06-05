@@ -28,8 +28,8 @@ MATH_TOKEN_TO_ENV = {env.token_begin: env for env in MATH_SIMPLE_ENVS}
 ARG_BEGIN_TO_ENV = {arg.token_begin: arg for arg in arg_type}
 
 DEF_MACROS = {
-    'renewcommand': (0),
-    'newcommand': (0, 3),
+    'renewcommand': set([0]),
+    'newcommand': set([0, 3]),
 }
 
 NO_ARG_MATH_CMD = """
@@ -280,12 +280,16 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
         return read_math_env(src, expr, tolerance=tolerance)
     elif c.category == TC.Escape:
 
-        parent_name, arg_found = ParentTracker[1] #second to top stack item
-
-        if parent_name in DEF_MACROS and arg_found in DEF_MACROS[parent_name]: 
+        # name, 0
+        if len(ParentTracker.stack) >= 2:
+            parent_name, arg_found = ParentTracker.stack[-2]  #second to top stack item
+        else:
+            parent_name, arg_found = None, None
+        if parent_name in DEF_MACROS and arg_found in DEF_MACROS[parent_name]:
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
+        print(parent_name, arg_found)
         if name == 'item':
             assert mode != MODE_MATH, r'Command \item invalid in math mode.'
             contents = read_item(src)
@@ -763,17 +767,16 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
 
     name = next(buf)
     #push name to ParentTracker stack
-    ParentTracker.push((name, ))
+    ParentTracker.push([name, 0])
 
     token = Token('', buf.position)
+
     if n_required_args < 0 and n_optional_args < 0:
         n_required_args, n_optional_args = SIGNATURES.get(name, (-1, -1))
-    
-    else:
-        args = read_args(buf, n_required_args, n_optional_args,
-                     tolerance=tolerance, mode=mode)
+    args = read_args(buf, n_required_args, n_optional_args,
+                         tolerance=tolerance, mode=mode)
     #pop ParentTracker
-    parent_name, args_found = ParentTracker.pop()
+    parent_name, args_found = ParentTracker.pop() 
     #increment args_found for (now) top item 
-    
+    ParentTracker.increment_top_count()
     return name, args
