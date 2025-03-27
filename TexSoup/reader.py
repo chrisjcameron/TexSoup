@@ -49,7 +49,6 @@ wedge wp Xi xi zeta
 SIGNATURES = {
     'def': (2, 0),
     'textbf': (1, 0),
-    'section': (1, 1),
     'label': (1, 0),
     'cap': (0, 0),
     'cup': (0, 0),
