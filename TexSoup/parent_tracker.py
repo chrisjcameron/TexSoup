@@ -37,3 +37,27 @@ class ParentTracker:
     @classmethod
     def reset(cls):
         cls.stack = []
+
+
+
+class GroupTracker:
+    stack = []
+
+    @classmethod
+    def push(cls, item):
+        cls.stack.append(item)
+
+    @classmethod
+    def pop(cls):
+        if cls.stack:
+            cur = cls.stack[-1]
+            cls.stack = cls.stack[:-1]
+            return cur
+        else:
+            return None
+
+    @classmethod
+    def reset(cls):
+        cls.stack = []
+
+

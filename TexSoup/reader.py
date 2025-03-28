@@ -11,6 +11,8 @@ from TexSoup.tokens import (
     MATH_ENV_NAMES,
 )
 from TexSoup.parent_tracker import ParentTracker
+from TexSoup.parent_tracker import GroupTracker
+
 import functools
 import string
 import sys
@@ -307,6 +309,7 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
             expr = TexCmd(name, args=args, position=c.position)
         return expr
     if c.category == TC.GroupBegin:
+        GroupTracker.push(c.category)
         return read_arg(src, c, tolerance=tolerance)
 
     assert isinstance(c, Token)
@@ -360,6 +363,7 @@ def read_item(src, tolerance=0):
             if cmd_name in ('end', 'item'):
                 return extras
         elif src.peek().category == TC.GroupEnd:
+            #_ = GroupTracker.pop()
             break
         extras.append(read_expr(src, tolerance=tolerance))
     return extras
@@ -541,10 +545,18 @@ def read_args(src, n_required=-1, n_optional=-1, args=None, tolerance=0,
     #old_arg_count = n_required + n_optional
     while n_required != 0:
         old_arg_count = n_required + n_optional
-        if src.hasNext() and src.peek().category == TC.BracketBegin:
-            n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
-        elif src.hasNext() and src.peek().category == TC.GroupBegin:
-            n_required = read_arg_required(src, args, n_required, tolerance, mode)
+        if src.hasNext():
+            next_cat = src.peek().category
+            if next_cat == TC.BracketBegin:
+                n_optional = read_arg_optional(
+                    src, args, n_optional, tolerance, mode
+                )
+            elif next_cat == TC.GroupBegin:
+                n_required = read_arg_required(
+                    src, args, n_required, tolerance, mode
+                )
+            elif next_cat == TC.GroupEnd and len(GroupTracker.stack):
+                break
         else:
             n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
             n_required = read_arg_required(src, args, n_required, tolerance, mode)
@@ -680,6 +692,7 @@ def read_arg(src, c, tolerance=0, mode=MODE_NON_MATH):
     arg = ARG_BEGIN_TO_ENV[c.category]
     while src.hasNext():
         if src.peek().category == arg.token_end:
+            if arg.token_end == TC.GroupEnd: GroupTracker.pop()
             src.forward()
             return arg(*content[1:], position=c.position)
         else:
@@ -772,8 +785,11 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
 
     if n_required_args < 0 and n_optional_args < 0:
         n_required_args, n_optional_args = SIGNATURES.get(name, (-1, -1))
-    args = read_args(buf, n_required_args, n_optional_args,
-                         tolerance=tolerance, mode=mode)
+    args = read_args(
+        buf,
+        n_required_args, n_optional_args,
+        tolerance=tolerance, mode=mode
+    )
     #pop ParentTracker
     parent_name, args_found = ParentTracker.pop() 
     #increment args_found for (now) top item 

@@ -8,6 +8,7 @@ from TexSoup.tex import read
 from TexSoup.data import TexNode
 from TexSoup.math_config import MathModeTracker
 from TexSoup.parent_tracker import ParentTracker
+from TexSoup.parent_tracker import GroupTracker
 
 __version__ = '0.3.1'
 
@@ -88,5 +89,6 @@ def TexSoup(tex_code, skip_envs=(), tolerance=0):
     """
     MathModeTracker.reset()
     ParentTracker.reset()
+    GroupTracker.reset()
     parsed, src = read(tex_code, skip_envs=skip_envs, tolerance=tolerance)
     return TexNode(parsed, src=src)
