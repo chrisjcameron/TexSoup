@@ -290,7 +290,6 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
-        print(parent_name, arg_found)
         if name == 'item':
             assert mode != MODE_MATH, r'Command \item invalid in math mode.'
             contents = read_item(src)
@@ -309,7 +308,6 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
             expr = TexCmd(name, args=args, position=c.position)
         return expr
     if c.category == TC.GroupBegin:
-        GroupTracker.push(c.category)
         return read_arg(src, c, tolerance=tolerance)
 
     assert isinstance(c, Token)
@@ -556,6 +554,9 @@ def read_args(src, n_required=-1, n_optional=-1, args=None, tolerance=0,
                     src, args, n_required, tolerance, mode
                 )
             elif next_cat == TC.GroupEnd and len(GroupTracker.stack):
+                # pop and consume are done later
+                # _ = GroupTracker.pop()
+                #src.forward() # consume the group end
                 break
         else:
             n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
@@ -631,11 +632,14 @@ def read_arg_required(
     while n_required != 0 and src.hasNext():
         spacer = read_spacer(src)
 
-        if src.hasNext() and src.peek().category == TC.GroupBegin:
+        if src.hasNext() and (src.peek().category == TC.GroupBegin):
             args.append(read_arg(
                 src, next(src), tolerance=tolerance, mode=mode))
             n_required -= 1
             continue
+        elif src.hasNext() and (src.peek().category == TC.BracketBegin):
+            #explictly marked optional arg
+            break
         elif src.hasNext() and n_required > 0:
             next_token = next(src)
             if next_token.category == TC.Escape:
@@ -690,6 +694,8 @@ def read_arg(src, c, tolerance=0, mode=MODE_NON_MATH):
     """
     content = [c]
     arg = ARG_BEGIN_TO_ENV[c.category]
+    if arg.token_begin == TC.GroupBegin:
+         GroupTracker.push(arg.token_begin)
     while src.hasNext():
         if src.peek().category == arg.token_end:
             if arg.token_end == TC.GroupEnd: GroupTracker.pop()
