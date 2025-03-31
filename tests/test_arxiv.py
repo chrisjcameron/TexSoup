@@ -1,4 +1,3 @@
-
 import sys
 import os
 sys.path.insert(0, os.path.abspath("../TexSoup"))   
@@ -6,6 +5,14 @@ print(sys.path)
 import TexSoup as TS
 print(TS.__path__)
 
+
+min_example=r"""
+\begin  {abstract}
+    Foo. Bar. Foo.
+\end{abstract}
+""".strip()
+tsoup = TS.TexSoup(min_example, tolerance=0)
+print(tsoup)
 
 min_example=r"""
 \renewcommand{\subsection}[1]{{\textit{#1.~}}}

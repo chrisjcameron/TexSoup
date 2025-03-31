@@ -49,16 +49,6 @@ wedge wp Xi xi zeta
 """.strip().split()
 
 SIGNATURES = {
-    'def': (2, 0),
-    'textbf': (1, 0),
-    'label': (1, 0),
-    'cap': (0, 0),
-    'cup': (0, 0),
-    'in': (0, 0),
-    'notin': (0, 0),
-    'infty': (0, 0),
-    'noindent': (0, 0),
-    'newcommand': (2, 1),
     'addcontentsline': (3, 0),
     'address': (1, 0),
     'addtocontents': (2, 0),
@@ -66,10 +56,12 @@ SIGNATURES = {
     'addtolength': (2, 0),
     'alph': (1, 0),
     'author': (1, 0),
+    'begin': (1,0),
     'bibitem': (1, 0),
     'bibliography': (1, 0),
     'bibliographystyle': (1, 0),
     'binom': (2, 0),
+    'cap': (0, 0),
     'caption': (1, 1),
     'cc': (1, 0),
     'chapter': (1, 1),
@@ -79,8 +71,10 @@ SIGNATURES = {
     'cite': (1, 1),
     'cline': (1, 0),
     'closing': (1, 0),
-    'date': (1, 0),
+    'cup': (0, 0),
     'dashbox': (2, 2),
+    'date': (1, 0),
+    'def': (2, 0),
     'documentstyle': (1, 1),
     'encl': (1, 0),
     'end': (1, 0),
@@ -96,12 +90,15 @@ SIGNATURES = {
     'hspace': (1, 0),
     'hspace*': (1, 0),
     'hypenation': (1, 0),
+    'in': (0, 0),
     'include': (1, 0),
     'includeonly': (1, 0),
     'index': (1, 0),
     'indexentry': (2, 0),
+    'infty': (0, 0),
     'input': (1, 0),
     'item': (0, 1),
+    'label': (1, 0),
     'label': (1, 0),
     'lefteqn': (1, 0),
     'line': (1, 1),
@@ -115,14 +112,17 @@ SIGNATURES = {
     'multicolumn': (3, 0),
     'multiput': (2, 2),
     'newcommand': (2, 1),
+    'newcommand': (2, 1),
     'newcounter': (1, 1),
     'newenvironment': (3, 1),
     'newfont': (2, 0),
     'newlength': (1, 0),
     'newsavebox': (1, 0),
     'newtheorem': (2, 2),
+    'noindent': (0, 0),
     'nolinebreak': (0, 1),
     'nopagebreak': (0, 1),
+    'notin': (0, 0),
     'opening': (1, 0),
     'oval': (0, 1),
     'overbrace': (1, 0),
@@ -158,10 +158,11 @@ SIGNATURES = {
     'subparagraph': (1, 1),
     'subparagraph*': (1, 0),
     'subsection': (1, 1),
-    'subsubsection': (1, 1),
     'subsection*': (1, 0),
+    'subsubsection': (1, 1),
     'subsubsection*': (1, 0),
     'symbol': (1, 0),
+    'textbf': (1, 0),
     'thanks': (1, 0),
     'thispagestyle': (1, 0),
     'title': (1, 0),
@@ -476,13 +477,18 @@ def read_env(src, expr, skip_envs=(), tolerance=0, mode=MODE_NON_MATH):
             name, args = make_read_peek(read_command)(
                 src, skip=1, tolerance=tolerance, mode=mode)
             if name == 'end':
+                #name, args = read_command(src, skip=1, tolerance=tolerance, mode=mode)
                 break
         contents.append(read_expr(src, skip_envs=skip_envs, tolerance=tolerance, mode=mode))
     error = not src.hasNext() or not args or args[0].string != expr.name
     if error and tolerance == 0:
         unclosed_env_handler(src, expr, src.peek((0, 6)))
     elif not error:
-        src.forward(5)
+        ff=0
+        while ff < 5: # 5 tokens
+            cur_token = src.forward()
+            if cur_token.category != TC.MergedSpacer:
+                ff += 1
     expr.append(*contents)
     return expr
 
@@ -545,6 +551,9 @@ def read_args(src, n_required=-1, n_optional=-1, args=None, tolerance=0,
         old_arg_count = n_required + n_optional
         if src.hasNext():
             next_cat = src.peek().category
+            #while next_cat == TC.MergedSpacer:
+            #    src.forward()
+            #    next_cat = src.peek().category
             if next_cat == TC.BracketBegin:
                 n_optional = read_arg_optional(
                     src, args, n_optional, tolerance, mode
@@ -558,9 +567,9 @@ def read_args(src, n_required=-1, n_optional=-1, args=None, tolerance=0,
                 # _ = GroupTracker.pop()
                 #src.forward() # consume the group end
                 break
-        else:
-            n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
-            n_required = read_arg_required(src, args, n_required, tolerance, mode)
+            else:
+                n_optional = read_arg_optional(src, args, n_optional, tolerance, mode)
+                n_required = read_arg_required(src, args, n_required, tolerance, mode)
         #attempts += 1
         if (n_required + n_optional) == old_arg_count:
             break
@@ -698,7 +707,8 @@ def read_arg(src, c, tolerance=0, mode=MODE_NON_MATH):
          GroupTracker.push(arg.token_begin)
     while src.hasNext():
         if src.peek().category == arg.token_end:
-            if arg.token_end == TC.GroupEnd: GroupTracker.pop()
+            if arg.token_end == TC.GroupEnd: 
+                GroupTracker.pop()
             src.forward()
             return arg(*content[1:], position=c.position)
         else:
