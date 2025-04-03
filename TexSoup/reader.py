@@ -17,7 +17,7 @@ import functools
 import string
 import sys
 
-
+SKIP_MATH = True
 MODE_MATH = 'mode:math'
 MODE_NON_MATH = 'mode:non-math'
 MATH_SIMPLE_ENVS = (
@@ -279,6 +279,8 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
     c = next(src)
     if (not is_arg) and c.category in MATH_TOKEN_TO_ENV.keys():
         expr = MATH_TOKEN_TO_ENV[c.category]([], position=c.position)
+        if SKIP_MATH:
+            return read_skip_math_env(src, expr, tolerance=tolerance)
         return read_math_env(src, expr, tolerance=tolerance)
     elif c.category == TC.Escape:
 
@@ -414,6 +416,35 @@ def read_math_env(src, expr, tolerance=0):
     expr.append(*contents)
     return expr
 
+def read_skip_math_env(src, expr, is_arg=False, tolerance=0):
+    r"""Read the environment from buffer, WITHOUT parsing contents
+
+    Advances the buffer until right after the end of the environment. Adds
+    UNparsed content to the expression automatically.
+
+    :param Buffer src: a buffer of tokens
+    :param TexExpr expr: expression for the environment
+    :rtype: TexExpr
+
+    >>> from TexSoup.category import categorize
+    >>> from TexSoup.tokens import tokenize
+    >>> buf = tokenize(categorize(r' \textbf{aa \end{foobar}ha'))
+    >>> read_skip_env(buf, TexNamedEnv('foobar'))
+    TexNamedEnv('foobar', [' \\textbf{aa '], [])
+    >>> buf = tokenize(categorize(r' \textbf{aa ha'))
+    >>> read_skip_env(buf, TexNamedEnv('foobar'))  #doctest:+ELLIPSIS
+    Traceback (most recent call last):
+        ...
+    EOFError: ...
+    """
+    contents = []
+    while src.hasNext() and src.peek().category != expr.token_end:
+        contents.append(src.forward(1))
+    if not src.hasNext() or src.peek().category != expr.token_end:
+            unclosed_env_handler(src, expr, src.peek())
+    next(src)
+    expr.append(*contents)
+    return expr
 
 def read_skip_env(src, expr, is_arg=False):
     r"""Read the environment from buffer, WITHOUT parsing contents

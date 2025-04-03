@@ -7,6 +7,12 @@ print(TS.__path__)
 
 
 min_example=r"""
+$$ \ceil[\Big]{\frac{foo}{bar}} $$
+""".strip()#.replace('\\}\\', '\\} \\').replace(')}', ') }')
+tsoup = TS.TexSoup(min_example, tolerance=0)
+print(tsoup)
+
+min_example=r"""
 \begin  {abstract}
     Foo. Bar. Foo.
 \end{abstract}
