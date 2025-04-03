@@ -290,7 +290,7 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
             parent_name, arg_found = ParentTracker.stack[-parent_offset]  #second to top stack item
         else:
             parent_name, arg_found = None, None
-        print(parent_name, arg_found)
+        #print(parent_name, arg_found)
         if parent_name in DEF_MACROS and arg_found in DEF_MACROS[parent_name]:
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
         else:
