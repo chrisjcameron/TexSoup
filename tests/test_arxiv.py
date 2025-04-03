@@ -5,6 +5,20 @@ print(sys.path)
 import TexSoup as TS
 print(TS.__path__)
 
+min_example=r"""
+\newcommand{\defproblem}[3]{
+ \vspace{1mm}
+\noindent\fbox{
+ \begin{minipage}{0.96\textwidth}
+ {\bf{Input:}} #2 \\
+ {\bf{Question:}} #3
+ \end{minipage}
+ }
+ \vspace{1mm}
+}
+""".strip()#.replace('\\}\\', '\\} \\').replace(')}', ') }')
+tsoup = TS.TexSoup(min_example, tolerance=0)
+print(tsoup)
 
 min_example=r"""
 $$ \ceil[\Big]{\frac{foo}{bar}} $$
