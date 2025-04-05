@@ -1,3 +1,5 @@
+from dataclasses import dataclass, field
+
 class ParentTracker:
     stack = []
 
@@ -40,6 +42,7 @@ class ParentTracker:
 
 
 
+
 class GroupTracker:
     stack = []
 
@@ -61,4 +64,18 @@ class GroupTracker:
     def reset(cls):
         cls.stack = []
 
+@dataclass
+class CustomMacro:
+   name: str 
+   num_args: tuple[int, int]
+   default_val: str
+   def_fmt_str: str
+
+
+class CustomDefs:
+    macros_dict = {}
+
+    @classmethod
+    def reset(cls):
+        cls.macros_dict = {}
 

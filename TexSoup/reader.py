@@ -13,6 +13,7 @@ from TexSoup.tokens import (
 )
 from TexSoup.parent_tracker import ParentTracker
 from TexSoup.parent_tracker import GroupTracker
+from TexSoup.parent_tracker import CustomDefs, CustomMacro
 
 import functools
 import string
@@ -21,14 +22,7 @@ import collections as coll
 import itertools as itr
 import re
 
-CustomMacro = coll.namedtuple( 'CustomMacro', 
-    [
-        'name', 
-        'num_args',
-        'default_val',
-        'def_fmt_str',
-    ]
-) 
+
 
 SKIP_MATH = True
 MODE_MATH = 'mode:math'
@@ -46,8 +40,6 @@ DEF_MACROS = {
     'renewcommand': set([0]),
     'newcommand': set([0, 3]),
 }
-
-CUSTOM_MACROS = dict()
 
 NO_ARG_MATH_CMD = """
 alpha approx ast beta bigcup blacksquare Box boxtimes cap cdot cdots chi 
@@ -202,7 +194,7 @@ SIGNATURES.update({cmd:(0,0) for cmd in NO_ARG_MATH_CMD})
 __all__ = ['read_expr', 'read_tex']
 
 def sub_macro(name, args):
-    macro_def = CUSTOM_MACROS.get(name, None)
+    macro_def = CustomDefs.macros_dict.get(name, None)
     assert macro_def is not None, f"Custom macro {name} is not defined"
     # num_args=(req_args, opt_args),
     # name=cmd_name, 
@@ -272,7 +264,7 @@ def update_signatures(expr):
         default_val=default_val,
         def_fmt_str=def_fmt_str,
     )
-    CUSTOM_MACROS[cmd_name] = new_macro
+    CustomDefs.macros_dict[cmd_name] = new_macro
 
     
 
@@ -350,7 +342,7 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False, 
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
-        if name in CUSTOM_MACROS:
+        if name in CustomDefs.macros_dict and parent_name not in DEF_MACROS:
             res_string = sub_macro(name, args)
             tokens = tokenize(categorize(res_string))
             src.prepend(tokens, pop=[c, name])

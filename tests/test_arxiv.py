@@ -5,6 +5,24 @@ print(sys.path)
 import TexSoup as TS
 print(TS.__path__)
 
+
+min_example=r"""
+\newcommand{\rmnum}[1]{\romannumeral #1}
+\newcommand{\rmnum}[1]{\romannumeral #1}
+\newcommand{\Rmnum}[1]{\expandafter\@slowromancap\romannumeral #1@}
+\newcommand{\thefootnotetext}{}
+\newcommand{\ga}{\gamma}
+\newcommand{\rx}{r_{\rm exp}}
+""".strip()
+tsoup = TS.TexSoup(min_example, tolerance=0)
+print(tsoup)
+
+min_example=r"""
+\newcommand{\rmnum}[1]{\romannumeral #1}
+""".strip()
+tsoup = TS.TexSoup(min_example, tolerance=0)
+print(tsoup)
+
 min_example=r"""
 \newcommand{\bq}{\begin{eqnarray*}}
 \newcommand{\eq}{\end{eqnarray*}}
