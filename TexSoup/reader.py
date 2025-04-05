@@ -25,6 +25,7 @@ import re
 
 
 SKIP_MATH = True
+EXPAND_MACROS = False
 MODE_MATH = 'mode:math'
 MODE_NON_MATH = 'mode:non-math'
 MATH_SIMPLE_ENVS = (
@@ -342,7 +343,7 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False, 
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
-        if name in CustomDefs.macros_dict and parent_name not in DEF_MACROS:
+        if EXPAND_MACROS and name in CustomDefs.macros_dict and parent_name not in DEF_MACROS:
             res_string = sub_macro(name, args)
             tokens = tokenize(categorize(res_string))
             src.prepend(tokens, pop=[c, name])
