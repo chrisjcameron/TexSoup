@@ -1,6 +1,6 @@
 import bisect
 import functools
-
+import itertools as itr
 from enum import IntEnum as IntEnumBase
 
 
@@ -406,6 +406,26 @@ class Buffer:
             return self[self.__i + j[0]:self.__i + j[1]]
         except IndexError:
             return None
+
+    def prepend(self, buf_obj, pop):
+        '''prepend a buffer to this buffer'''
+        new_pos = self.__i
+        queue_tail = []
+        while len(pop) > 0:
+            last_item = self.__queue.pop(-1)
+            new_pos -= 1
+            if last_item == pop[-1]:
+                _ = pop.pop(-1)
+            else:
+                queue_tail.append(last_item)
+            
+        self.__iterator = itr.chain(
+            buf_obj.__iterator,
+            queue_tail,
+            self.__iterator
+        )
+        self.__i = new_pos
+        _ = self.forward()
 
     def __next__(self):
         """Implements next."""
