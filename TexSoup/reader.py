@@ -1,6 +1,7 @@
 """Parsing mechanisms should not be directly invoked publicly, as they are
 subject to change."""
 
+from TexSoup.category import categorize
 from TexSoup.utils import Token, Buffer, MixedBuffer, CharToLineOffset
 from TexSoup.data import *
 from TexSoup.data import arg_type
@@ -16,6 +17,18 @@ from TexSoup.parent_tracker import GroupTracker
 import functools
 import string
 import sys
+import collections as coll
+import itertools as itr
+import re
+
+CustomMacro = coll.namedtuple( 'CustomMacro', 
+    [
+        'name', 
+        'num_args',
+        'default_val',
+        'def_fmt_str',
+    ]
+) 
 
 SKIP_MATH = True
 MODE_MATH = 'mode:math'
@@ -33,6 +46,8 @@ DEF_MACROS = {
     'renewcommand': set([0]),
     'newcommand': set([0, 3]),
 }
+
+CUSTOM_MACROS = dict()
 
 NO_ARG_MATH_CMD = """
 alpha approx ast beta bigcup blacksquare Box boxtimes cap cdot cdots chi 
@@ -186,6 +201,24 @@ SIGNATURES.update({cmd:(0,0) for cmd in NO_ARG_MATH_CMD})
 
 __all__ = ['read_expr', 'read_tex']
 
+def sub_macro(name, args):
+    macro_def = CUSTOM_MACROS.get(name, None)
+    assert macro_def is not None, f"Custom macro {name} is not defined"
+    # num_args=(req_args, opt_args),
+    # name=cmd_name, 
+    # default_val=default_val,
+    # def_fmt_str=def_fmt_str,
+    arg_dict = {}
+    arg_counter = 1 
+    if len(args) < sum(macro_def.num_args):
+        arg_dict[f'pyarg_{arg_counter}'] = macro_def.default_val
+        arg_counter += 1
+    for arg in args:
+        arg_dict[f'pyarg_{arg_counter}'] = arg.string
+        arg_counter += 1
+    expanded_macro_string = macro_def.def_fmt_str.format(**arg_dict)
+    return expanded_macro_string
+
 
 def update_signatures(expr):
     """Update the function signatures as new functions are defined
@@ -200,7 +233,9 @@ def update_signatures(expr):
     cmd_name = None
     req_args = 0
     opt_args = 0
-    
+    default_val = None
+    def_fmt_str = None
+
     if isinstance(expr.args[0], BraceGroup):
         cmd_elem = expr.args[0]._contents[0]
         if isinstance(cmd_elem, str): 
@@ -219,8 +254,27 @@ def update_signatures(expr):
     if len(expr.args) > 3:
         if isinstance(expr.args[2], BracketGroup):
             opt_args = 1
+            default_val = expr.args[2].contents[0].string
     req_args = req_args - opt_args
     SIGNATURES[cmd_name] = (req_args, opt_args)
+
+    definition = expr.args[-1].string
+
+    pat = re.compile(r"(?<!#)#([0-9]+)")
+    def_fmt_str = re.sub(
+        pat, 
+        lambda match: f"{{pyarg_{match.group(1)}}}",
+        definition.replace('{', "{{").replace('}', "}}"))
+
+    new_macro = CustomMacro(
+        name=cmd_name, 
+        num_args=(req_args, opt_args),
+        default_val=default_val,
+        def_fmt_str=def_fmt_str,
+    )
+    CUSTOM_MACROS[cmd_name] = new_macro
+
+    
 
 def read_tex(buf, skip_envs=(), tolerance=0):
     r"""Parse all expressions in buffer
@@ -259,14 +313,16 @@ def make_read_peek(f):
     """
     @functools.wraps(f)
     def wrapper(buf, *args, **kwargs):
+        #old_queue = buf._Buffer__queue.copy()
         start = buf.position
         ret = f(buf, *args, **kwargs)
+        #new_queue = buf._Buffer__queue
         buf.backward(buf.position - start)
         return ret
     return wrapper
 
 
-def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
+def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False, arg_end=None):
     r"""Read next expression from buffer
 
     :param Buffer src: a buffer of tokens
@@ -290,25 +346,30 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
             parent_name, arg_found = ParentTracker.stack[-parent_offset]  #second to top stack item
         else:
             parent_name, arg_found = None, None
-        #print(parent_name, arg_found)
         if parent_name in DEF_MACROS and arg_found in DEF_MACROS[parent_name]:
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
-        if name == 'item':
+        if name in CUSTOM_MACROS:
+            res_string = sub_macro(name, args)
+            tokens = tokenize(categorize(res_string))
+            src.prepend(tokens, pop=[c, name])
+            return
+        elif name == 'item':
             assert mode != MODE_MATH, r'Command \item invalid in math mode.'
             contents = read_item(src)
             expr = TexCmd(name, contents, args, position=c.position)
+        elif arg_end and src.peek().category == arg_end:
+            expr = TexCmd(name, args=args, position=c.position)
         elif name == 'begin':
             assert args, 'Begin command must be followed by an env name.'
             expr = TexNamedEnv(
                 args[0].string, args=args[1:], position=c.position)
-            if expr.name in MATH_ENV_NAMES:
-                mode = MODE_MATH
-            if is_arg or (expr.name in skip_envs):
-                read_skip_env(src, expr, is_arg)
-            else:
-                read_env(src, expr, skip_envs=skip_envs,tolerance=tolerance, mode=mode)
+            expr = get_named_env(
+                src, expr, 
+                skip_envs=skip_envs,
+                tolerance=tolerance, is_arg=is_arg
+            )
         else:
             expr = TexCmd(name, args=args, position=c.position)
         return expr
@@ -317,6 +378,16 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False):
 
     assert isinstance(c, Token)
     return TexText(c)
+
+def get_named_env(src, expr, skip_envs=(), tolerance=0, is_arg=False, mode=MODE_NON_MATH):
+    if expr.name in MATH_ENV_NAMES:
+        mode = MODE_MATH
+    if is_arg or (expr.name in skip_envs):
+        read_skip_env(src, expr, is_arg)
+    else:
+        read_env(src, expr, skip_envs=skip_envs,tolerance=tolerance, mode=mode)
+    return expr
+
 
 
 ################
@@ -512,7 +583,10 @@ def read_env(src, expr, skip_envs=(), tolerance=0, mode=MODE_NON_MATH):
             if name == 'end':
                 #name, args = read_command(src, skip=1, tolerance=tolerance, mode=mode)
                 break
-        contents.append(read_expr(src, skip_envs=skip_envs, tolerance=tolerance, mode=mode))
+
+        next_expr = read_expr(src, skip_envs=skip_envs, tolerance=tolerance, mode=mode)
+        if next_expr:
+            contents.append(next_expr)
     error = not src.hasNext() or not args or args[0].string != expr.name
     if error and tolerance == 0:
         unclosed_env_handler(src, expr, src.peek((0, 6)))
@@ -745,7 +819,7 @@ def read_arg(src, c, tolerance=0, mode=MODE_NON_MATH):
             src.forward()
             return arg(*content[1:], position=c.position)
         else:
-            content.append(read_expr(src, tolerance=tolerance, mode=mode, is_arg=True))
+            content.append(read_expr(src, tolerance=tolerance, mode=mode, is_arg=True, arg_end=arg.token_end))
 
     if tolerance == 0:
         clo = CharToLineOffset(str(src))

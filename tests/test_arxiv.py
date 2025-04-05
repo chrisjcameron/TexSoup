@@ -6,6 +6,18 @@ import TexSoup as TS
 print(TS.__path__)
 
 min_example=r"""
+\newcommand{\bq}{\begin{eqnarray*}}
+\newcommand{\eq}{\end{eqnarray*}}
+
+\begin{theorem} 
+\bq \mathbb{E} = \mathcal{X} \eq
+\end{theorem}
+""".strip()#.replace('\\}\\', '\\} \\').replace(')}', ') }')
+tsoup = TS.TexSoup(min_example, tolerance=0)
+print(tsoup)
+
+
+min_example=r"""
 \newcommand{\defproblem}[3]{
  \vspace{1mm}
 \noindent\fbox{

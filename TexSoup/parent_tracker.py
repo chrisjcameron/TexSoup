@@ -46,6 +46,7 @@ class GroupTracker:
     @classmethod
     def push(cls, item):
         cls.stack.append(item)
+    
 
     @classmethod
     def pop(cls):
