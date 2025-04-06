@@ -6,7 +6,7 @@ import TexSoup as TS
 print(TS.__path__)
 
 min_example=r"""
-\def\lf{\left}
+\def\fc#1#2{\frac{#1}{#2}}
 """.strip()
 tsoup = TS.TexSoup(min_example, tolerance=0)
 print(tsoup)

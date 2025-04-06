@@ -72,53 +72,57 @@ def update_signatures(expr):
     """
     if not hasattr(expr, "name"):
         return
-    if not (expr.name == "newcommand" and expr.args):
+    if (expr.name == "newcommand" and expr.args):
+        
+        cmd_name = None
+        req_args = 0
+        opt_args = 0
+        default_val = None
+        def_fmt_str = None
+
+        if isinstance(expr.args[0], BraceGroup):
+            cmd_elem = expr.args[0]._contents[0]
+            if isinstance(cmd_elem, str): 
+                cmd_name = cmd_elem.strip("\\")
+            elif hasattr(cmd_elem, 'name'):
+                cmd_name = cmd_elem.name
+        if isinstance(expr.args[0], TexCmd):
+            cmd_name = expr.args[0].name
+        if not cmd_name:
+            sys.stderr.write(f"Cmd name not recognized in {expr}.\n")
         return
-    
-    cmd_name = None
-    req_args = 0
-    opt_args = 0
-    default_val = None
-    def_fmt_str = None
 
-    if isinstance(expr.args[0], BraceGroup):
-        cmd_elem = expr.args[0]._contents[0]
-        if isinstance(cmd_elem, str): 
-            cmd_name = cmd_elem.strip("\\")
-        elif hasattr(cmd_elem, 'name'):
-            cmd_name = cmd_elem.name
-    if isinstance(expr.args[0], TexCmd):
-        cmd_name = expr.args[0].name
-    if not cmd_name:
-       sys.stderr.write(f"Cmd name not recognized in {expr}.\n")
-       return
+        if len(expr.args) > 2:
+            if isinstance(expr.args[1], BracketGroup):
+                req_args = int(expr.args[1]._contents[0])
+        if len(expr.args) > 3:
+            if isinstance(expr.args[2], BracketGroup):
+                opt_args = 1
+                default_val = expr.args[2].contents[0].string
+        req_args = req_args - opt_args
+        MacroSignatures.sig_dict[cmd_name] = (req_args, opt_args)
 
-    if len(expr.args) > 2:
-        if isinstance(expr.args[1], BracketGroup):
-            req_args = int(expr.args[1]._contents[0])
-    if len(expr.args) > 3:
-        if isinstance(expr.args[2], BracketGroup):
-            opt_args = 1
-            default_val = expr.args[2].contents[0].string
-    req_args = req_args - opt_args
-    MacroSignatures.sig_dict[cmd_name] = (req_args, opt_args)
+        definition = expr.args[-1].string
 
-    definition = expr.args[-1].string
+        pat = re.compile(r"(?<!#)#([0-9]+)")
+        def_fmt_str = re.sub(
+            pat, 
+            lambda match: f"{{pyarg_{match.group(1)}}}",
+            definition.replace('{', "{{").replace('}', "}}"))
 
-    pat = re.compile(r"(?<!#)#([0-9]+)")
-    def_fmt_str = re.sub(
-        pat, 
-        lambda match: f"{{pyarg_{match.group(1)}}}",
-        definition.replace('{', "{{").replace('}', "}}"))
-
-    new_macro = CustomMacro(
-        name=cmd_name, 
-        num_args=(req_args, opt_args),
-        default_val=default_val,
-        def_fmt_str=def_fmt_str,
-    )
-    CustomDefs.macros_dict[cmd_name] = new_macro
-
+        new_macro = CustomMacro(
+            name=cmd_name, 
+            num_args=(req_args, opt_args),
+            default_val=default_val,
+            def_fmt_str=def_fmt_str,
+        )
+        CustomDefs.macros_dict[cmd_name] = new_macro
+    elif (expr.name == "def" and expr.args):
+        # need to parse the arg count from the defined function name (args[0])
+        # might be able to be combined with newcommand section
+        return
+    else:
+        return
     
 
 def read_tex(buf, skip_envs=(), tolerance=0):
