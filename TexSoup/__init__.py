@@ -7,10 +7,10 @@ tree with navigation, search, and modification utilities.
 from TexSoup.tex import read
 from TexSoup.data import TexNode
 from TexSoup.math_config import MathModeTracker
-from TexSoup.parent_tracker import ParentTracker
-from TexSoup.parent_tracker import GroupTracker
-from TexSoup.parent_tracker import CustomDefs
-
+from TexSoup.dynamic_tracker import ParentTracker
+from TexSoup.dynamic_tracker import GroupTracker
+from TexSoup.dynamic_tracker import CustomDefs
+from TexSoup.dynamic_tracker import MacroSignatures
 
 __version__ = '0.3.1'
 
@@ -93,5 +93,6 @@ def TexSoup(tex_code, skip_envs=(), tolerance=0):
     ParentTracker.reset()
     GroupTracker.reset()
     CustomDefs.reset()
+    MacroSignatures.reset()
     parsed, src = read(tex_code, skip_envs=skip_envs, tolerance=tolerance)
     return TexNode(parsed, src=src)
