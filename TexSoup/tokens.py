@@ -391,10 +391,11 @@ def tokenize_command_name(text, prev=None):
     if text.peek(-1) and text.peek(-1).category == CC.Escape \
             and text.peek().category == CC.Letter:
         c = text.forward(1)
-        while text.hasNext() and text.peek().category == CC.Letter \
+        while text.hasNext() and ( text.peek().category == CC.Letter \
                 or text.peek() == '*' \
                 or text.peek() == '#' \
-                or text.peek().isdigit():  
+                or text.peek().isdigit()
+        ):  
             # TODO: what do about asterisk?
             # TODO: excluded other, macro, super, sub, acttive, alignment
             # although macros can make these a part of the command name

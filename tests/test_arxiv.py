@@ -6,6 +6,12 @@ import TexSoup as TS
 print(TS.__path__)
 
 min_example=r"""
+\endinput
+""".strip()
+tsoup = TS.TexSoup(min_example, tolerance=0)
+print(tsoup)
+
+min_example=r"""
  \def\be   {\begin}
 """.strip()
 tsoup = TS.TexSoup(min_example, tolerance=0)
