@@ -39,6 +39,7 @@ ARG_BEGIN_TO_ENV = {arg.token_begin: arg for arg in arg_type}
 DEF_MACROS = {
     'renewcommand': set([0]),
     'newcommand': set([0, 3]),
+    'def': set([0, 1, 2])
 }
 
 
@@ -191,7 +192,7 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False, 
         else:
             parent_name, arg_found = None, None
         if parent_name in DEF_MACROS and arg_found in DEF_MACROS[parent_name]:
-            name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode)
+            name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode, is_def=True)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
         if EXPAND_MACROS and name in CustomDefs.macros_dict and parent_name not in DEF_MACROS:
@@ -702,8 +703,12 @@ def read_spacer(buf):
 
 
 def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
-                 tolerance=0, mode=MODE_NON_MATH):
+                 tolerance=0, mode=MODE_NON_MATH, is_def=False):
     r"""Parses command and all arguments. Assumes escape has just been parsed.
+
+    When is_def is True, the command is an argument to macro defining command
+    so we need to be 
+    
 
     No whitespace is allowed between escape and command name. e.g.,
     :code:`\ textbf` is a backslash command, then text :code:`textbf`. Only
