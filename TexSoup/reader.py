@@ -36,10 +36,12 @@ MATH_SIMPLE_ENVS = (
 MATH_TOKEN_TO_ENV = {env.token_begin: env for env in MATH_SIMPLE_ENVS}
 ARG_BEGIN_TO_ENV = {arg.token_begin: arg for arg in arg_type}
 
+# The key is the command name
+# the value controls which command args are allowed to have no args
 DEF_MACROS = {
     'renewcommand': set([0]),
     'newcommand': set([0, 3]),
-    'def': set([0, 1, 2])
+    'def': set([0])
 }
 
 
@@ -197,6 +199,8 @@ def read_expr(src, skip_envs=(), tolerance=0, mode=MODE_NON_MATH, is_arg=False, 
             parent_name, arg_found = None, None
         if parent_name in DEF_MACROS and arg_found in DEF_MACROS[parent_name]:
             name, args = read_command(src, n_required_args=0, n_optional_args=0, tolerance=tolerance, mode=mode, is_def=True)
+        elif parent_name in DEF_MACROS and arg_found not in DEF_MACROS[parent_name]:
+            name, args = read_command(src, tolerance=tolerance, mode=mode, is_def=True)
         else:
             name, args = read_command(src, tolerance=tolerance, mode=mode)
         if EXPAND_MACROS and name in CustomDefs.macros_dict and parent_name not in DEF_MACROS:
@@ -711,7 +715,7 @@ def read_command(buf, n_required_args=-1, n_optional_args=-1, skip=0,
     r"""Parses command and all arguments. Assumes escape has just been parsed.
 
     When is_def is True, the command is an argument to macro defining command
-    so we need to be 
+    so we need accept the possibility of no arg
     
 
     No whitespace is allowed between escape and command name. e.g.,
