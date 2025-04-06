@@ -20,10 +20,10 @@ MATH_ENV_NAMES = (
     'gather*', 'math', 'multline', 'multline*', 'split'
 )
 BRACKETS_DELIMITERS = {
-    '(', ')', '<', '>', '[', ']', '{', '}', r'\{', r'\}', '.' '|', r'\langle',
+    '(', ')', '<', '>', '[', ']', r'\{', r'\}', '.' '|', r'\langle',
     r'\rangle', r'\lfloor', r'\rfloor', r'\lceil', r'\rceil', r'\ulcorner',
     r'\urcorner', r'\lbrack', r'\rbrack'
-}
+} # removed as they are not valid in Overleaf '{', '}',
 # TODO: looks like left-right do have to match
 SIZE_PREFIX = (
     'left', 'right', 

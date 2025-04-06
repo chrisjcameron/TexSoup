@@ -6,11 +6,16 @@ import TexSoup as TS
 print(TS.__path__)
 
 min_example=r"""
-\author*[4,5]{\fnm{Honghao} \sur{Gao}}\email{honghaogao@gachon.ac.kr; gaohonghao@shu.edu.cn}
+\def\lf{\left}
 """.strip()
 tsoup = TS.TexSoup(min_example, tolerance=0)
 print(tsoup)
 
+min_example=r"""
+\author*[4,5]{\fnm{Honghao} \sur{Gao}}\email{honghaogao@gachon.ac.kr; gaohonghao@shu.edu.cn}
+""".strip()
+tsoup = TS.TexSoup(min_example, tolerance=0)
+print(tsoup)
 
 min_example=r"""
 \newcommand{\rmnum}[1]{\romannumeral #1}
